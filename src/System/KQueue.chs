@@ -9,7 +9,7 @@
 -- information.
 -- For a higher-level binding, see "System.KQueue.HighLevel".
 module System.KQueue
-  ( KQueue
+  {-( KQueue
   , kqueue
   , KEvent (..)
   , Filter (..)
@@ -17,10 +17,11 @@ module System.KQueue
   , FFlag (..)
   , kevent
   , KQueueException
-  ) where
+  ) -}where
 
 #include <sys/time.h>
 #include <sys/event.h>
+#include <sys/types.h>
 
 import Control.Applicative ( (<$>), (<*>) )
 import Control.Exception   ( Exception, throwIO )
@@ -63,7 +64,7 @@ kqueue = KQueue <$> {#call kqueue as kqueue_ #}
 -- | A kernel event.
 data KEvent = KEvent
   { ident    :: CULong  -- ^ The identifier for the event, often a file descriptor.
-  , evfilter :: Filter  -- ^ The kernel filter (type of event).
+  , evfilter :: Filter  -- ^ The kernel filter (≈btype of event).
   , flags    :: [Flag]  -- ^ Actions to perform on the event.
   , fflags   :: [FFlag] -- ^ Filter-specific flags.
   , data_    :: CLong   -- ^ Filter-specific data value.
@@ -72,63 +73,48 @@ data KEvent = KEvent
 
 -- TODO: nicer types for ident, data_ and udata.
 
-#c
-enum Filter
-  { EvfiltRead = EVFILT_READ
-  , EvfiltWrite = EVFILT_WRITE
-  , EvfiltAio = EVFILT_AIO
-  , EvfiltVnode = EVFILT_VNODE
-  , EvfiltProc = EVFILT_PROC
-  , EvfiltSignal = EVFILT_SIGNAL
-  , EvfiltTimer = EVFILT_TIMER
-// Not on Mac OS X
-// , EvfiltUser = EVFILT_USER
-  };
-#endc
-
--- | The types of kernel events.
-{#enum Filter {} deriving (Show, Eq) #}
-
-#c
-enum Flag
-  { EvAdd      = EV_ADD
-  , EvEnable   = EV_ENABLE
-  , EvDisable  = EV_DISABLE
-// Not on Mac OS X
-//  , EvDispatch = EV_DISPATCH
-  , EvDelete   = EV_DELETE
-  , EvReceipt  = EV_RECEIPT
-  , EvOneshot  = EV_ONESHOT
-  , EvClear    = EV_CLEAR
-  , EvEof      = EV_EOF
-  , EvError    = EV_ERROR
-  };
-#endc
+{#enum define Filter { EVFILT_READ   as EvfiltRead
+                     , EVFILT_WRITE  as EvfiltWrite
+                     , EVFILT_AIO    as EvfiltAio
+                     , EVFILT_VNODE  as EvfiltVnode
+                     , EVFILT_PROC   as EvfiltProc
+                     , EVFILT_SIGNAL as EvfiltSignal
+                     , EVFILT_TIMER  as EvfiltTimer
+                     , EVFILT_USER   as EvfiltUser
+                     } deriving (Show, Eq)
+#}
 
 -- | The actions to perform on the event.
-{#enum Flag {} deriving (Show, Eq) #}
-
-#c
-enum FFlag
-  { NoteDelete = NOTE_DELETE
-  , NoteWrite  = NOTE_WRITE
-  , NoteExtend = NOTE_EXTEND
-  , NoteAttrib = NOTE_ATTRIB
-  , NoteLink   = NOTE_LINK
-  , NoteRename = NOTE_RENAME
-  , NoteRevoke = NOTE_REVOKE
-// Seems to have the same value as NoteDelete
-//  , NoteLowat  = NOTE_LOWAT
-  , NoteExit   = NOTE_EXIT
-  , NoteFork   = NOTE_FORK
-  , NoteExec   = NOTE_EXEC
-  , NoteSignal = NOTE_SIGNAL
-  , NoteReap   = NOTE_REAP
-  };
-#endc
+{# enum define Flag { EV_ADD      as EvAdd
+                    , EV_ENABLE   as EvEnable
+                    , EV_DISABLE  as EvDisable
+                    , EV_DISPATCH as EvDispatch
+                    , EV_DELETE   as EvDelete
+                    , EV_RECEIPT  as EvReceipt
+                    , EV_ONESHOT  as EvOneshot
+                    , EV_CLEAR    as EvClear
+                    , EV_EOF      as EvEof
+                    , EV_ERROR    as EvError
+                    } deriving (Show, Eq)
+#}
 
 -- | The filter specific flags.
-{#enum FFlag {} deriving (Show, Eq) #}
+{#enum define FFlag { NOTE_DELETE as NoteDelete
+                    , NOTE_WRITE  as NoteWrite
+                    , NOTE_EXTEND as NoteExtend
+                    , NOTE_ATTRIB as NoteAttrib
+                    , NOTE_LINK   as NoteLink
+                    , NOTE_RENAME as NoteRename
+                    , NOTE_REVOKE as NoteRevoke
+                    , NOTE_LOWAT  as NoteLowat
+                    , NOTE_EXIT   as NoteExit
+                    , NOTE_FORK   as NoteFork
+                    , NOTE_EXEC   as NoteExec
+                    , NOTE_SIGNAL as NoteSignal
+                    -- NOTE_REAP is deprecated, NOTE_EXIT should be used instead
+                    -- , NOTE_REAP as NoteReap
+                    } deriving (Show, Eq)
+#}
 
 -- | Convert a list of enumeration values to an integer by combining
 -- them with bitwise 'or'.
